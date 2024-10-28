@@ -139,3 +139,6 @@ Options:
 ```bash
 bark -m "hello world" -r "user1,user2" -d 10
 ```
+
+## known issue
+- not all param support in encrypt mode [detail in code](https://github.com/Finb/Bark/blob/master/NotificationServiceExtension/Processor/CiphertextProcessor.swift#L13)
