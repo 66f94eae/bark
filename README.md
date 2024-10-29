@@ -134,6 +134,11 @@ Options:
           Print version
 ```
 
+**Note:** 
+- The `-k` option is used to specify the encryption key, which is required when using the `--aes128`, `--aes192`, `--aes256`options.
+- The `receiver` is a comma-separated list of *device tokens*
+- ![how to get your device token](https://github.com/66f94eae/bark/raw/main/device_token.png "how to get your device token")
+
 ## Example
 
 ```bash
