@@ -90,7 +90,9 @@ pub trait Sender {
         let jwt_signature: String = Self::clean_str(openssl::base64::encode_block(&sign));
         let token: String= format!("{}.{}", jwt_header, jwt_signature);
 
-        std::fs::write(self.run_file(), format!("{} {}",time_stamp, token).as_bytes()).expect("write token failed");
+        if let Err(_) = std::fs::write(self.run_file(), format!("{} {}",time_stamp, token).as_bytes()) {
+            println!("\x1b[33mwarning\x1b[0m: Cache token failed, but it does not affect usage. However, it is strongly recommended to grant permission to read and write file: {}", self.run_file());
+        }
         token
     }
 
