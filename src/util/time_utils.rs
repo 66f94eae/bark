@@ -21,33 +21,6 @@
 // SOFTWARE.
 
 
-use crate::module::{msg::Msg, run_file::RunFile};
-
-
-pub trait Sender {
-    fn run_file(&self) -> RunFile;
-    fn run_file_path(&self) -> &str;
-    fn auth_key_id(&self) -> &str;
-    fn team_id(&self) -> &str;
-    fn key(&self) -> &[u8];
-    fn msg(&self) -> &Msg;
-    fn topic(&self) -> &str;
-
-    
-    fn send(&self, devices: Vec<String>) {
-        let devices = self.run_file().translate_to_real_devices(devices);
-        crate::apns::do_send(self.msg(), self.topic(), devices, &self.get_token());
-    }
-
-    fn get_token(&self) -> String {
-        
-        let mut run_file = self.run_file();
-        if let Some(token) = run_file.get_token(self.auth_key_id(), self.team_id(), self.key()) {
-            token
-        } else {
-            panic!("token is not valid")
-        }
-        
-    }
-    
+pub fn curr_time_secs() -> u64 {
+    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).expect("get timestamp failed").as_secs()
 }

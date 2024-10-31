@@ -21,33 +21,44 @@
 // SOFTWARE.
 
 
-use crate::module::{msg::Msg, run_file::RunFile};
+use serde::{Serialize, Deserialize};
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct UserInfo {
+    nick_name: String,
+    device_token: String
+}
 
-pub trait Sender {
-    fn run_file(&self) -> RunFile;
-    fn run_file_path(&self) -> &str;
-    fn auth_key_id(&self) -> &str;
-    fn team_id(&self) -> &str;
-    fn key(&self) -> &[u8];
-    fn msg(&self) -> &Msg;
-    fn topic(&self) -> &str;
-
-    
-    fn send(&self, devices: Vec<String>) {
-        let devices = self.run_file().translate_to_real_devices(devices);
-        crate::apns::do_send(self.msg(), self.topic(), devices, &self.get_token());
-    }
-
-    fn get_token(&self) -> String {
-        
-        let mut run_file = self.run_file();
-        if let Some(token) = run_file.get_token(self.auth_key_id(), self.team_id(), self.key()) {
-            token
-        } else {
-            panic!("token is not valid")
+impl UserInfo {
+    pub fn new(nick_name: &str, device_token: &str) -> UserInfo {
+        UserInfo {
+            nick_name: nick_name.to_string(),
+            device_token: device_token.to_string()
         }
-        
+   }
+   
+   pub fn get_nick_name(&self) -> &str {
+       &self.nick_name
+   }
+   pub fn get_device_token(&self) -> &str {
+       &self.device_token
+   }
+}
+
+impl std::str::FromStr for UserInfo {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (nick_name, device_token) = s.split_once(":").unwrap_or_else(|| ("",""));
+        if nick_name.is_empty() || device_token.is_empty() {
+            return Err("Please input valid char like \"alias:device_token\"".to_string());
+        }
+        Ok(UserInfo::new(nick_name, device_token))
     }
-    
+}
+
+impl std::fmt::Display for UserInfo {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "{}: {}", self.nick_name, self.device_token)
+    }
 }

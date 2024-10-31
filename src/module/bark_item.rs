@@ -21,9 +21,9 @@
 // SOFTWARE.
 
 
-use crate::{config, module::base_item::BaseItem, traits::sender::Sender};
+use crate::{config, module::base_item::BaseItem, traits::sender::Sender, util::file_utils};
 
-use super::msg::Msg;
+use super::{msg::Msg, run_file::RunFile};
 
 const TEAM_ID: &str = "5U8LBRXG3A";
 const AUTH_KEY_ID: &str = "LH4T9V5U4R";
@@ -47,14 +47,19 @@ impl <'a> Bark<'a> {
             base : BaseItem::new(msg, TEAM_ID, AUTH_KEY_ID, TOPIC, KEY, config::RUN_FILE_BARK)
         }
     }
+
 }
 
 impl <'a> Sender for Bark<'a> {
     fn msg(&self) -> &Msg {
         self.base.msg()
     }
-    fn run_file(&self) -> &str {
-        self.base.run_file()
+    fn run_file(&self) -> RunFile {
+        file_utils::read_runfile_from_file(self.run_file_path())
+    }
+
+    fn run_file_path(&self) -> &str {
+        &self.base.run_file()
     }
 
     fn auth_key_id(&self) -> &str {

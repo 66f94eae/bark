@@ -347,7 +347,6 @@ impl Msg {
     }
 
     pub fn serialize(&self) -> String {
-        println!("json: {}", self.to_json());
         if self.cipher.is_some() {
             match self.encrypt() {
                 Ok(encrypted) => {
