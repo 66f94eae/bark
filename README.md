@@ -44,6 +44,10 @@ This a cli tool for send notification to your device
 
 Usage: bark [OPTIONS] -m <MSG> -r <RECEIVER>...
 
+Commands:
+  user  alias of device token
+  help  Print this message or the help of the given subcommand(s)
+
 Options:
   -t, --title <TITLE>
           title
@@ -134,10 +138,26 @@ Options:
           Print version
 ```
 
+subcommands: user alias of device token
+Useage: ` bark help user`
+```bash
+alias of device token
+
+Usage: bark user [OPTIONS]
+
+Options:
+      --add <ADD>...  add user like "alias:device_token" ["alias1:device_token1" ...]
+      --del <DEL>...  delete user like "alias1" ["alias2" ...]
+      --get [<GET>]   get user like "alias"
+                      if not passed, all users will be displayed
+  -h, --help          Print help
+```
+
 **Note:** 
 - The `-k` option is used to specify the encryption key, which is required when using the `--aes128`, `--aes192`, `--aes256`options.
 - The `receiver` is a comma-separated list of *device tokens*
 - ![how to get your device token](https://github.com/66f94eae/bark/raw/main/device_token.png "how to get your device token")
+
 
 ## Example
 

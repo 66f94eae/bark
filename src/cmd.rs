@@ -21,107 +21,174 @@
 // SOFTWARE.
 
 
+use std::process::exit;
+
 use clap::{ArgMatches, Command, CommandFactory, FromArgMatches};
 
-use crate::module::msg::Msg;
+use crate::module::{msg::Msg, run_file::RunFile, user_info::UserInfo};
 
 
 #[derive(clap::Parser, Debug)]
 #[clap(
     author = env!("CARGO_PKG_AUTHORS"),
     version = env!("CARGO_PKG_VERSION"),
-    about = "cli msg sender hio",
+    about = "cli msg sender",
     long_about = env!("CARGO_PKG_DESCRIPTION"),
     override_usage = env!("CARGO_PKG_NAME").to_owned() + " [OPTIONS] -m <MSG> -r <RECEIVER>..."
 )]
 pub struct CMD {
     /// title
-    #[clap(short, long, required = false, default_value = "Notification")]
+    #[arg(short, long, required = false, default_value = "Notification")]
     pub title: String,
     /// msg content
-    #[clap(short, long)]
+    #[arg(short, long)]
     pub msg: String,
     /// send to whom in format of user1,user2...
-    #[clap(short, long, value_delimiter = ',')]
+    #[arg(short, long, value_delimiter = ',')]
     pub receiver: Vec<String>,
     /// after how many seconds to send, positive number [1..]
-    #[clap(short, long, required = false, value_parser = clap::value_parser!(u64).range(1..))]
+    #[arg(short, long, required = false, value_parser = clap::value_parser!(u64).range(1..))]
     pub delay: Option<u64>,
     /// Push Interruption Level(active, timeSensitive, passive)
-    #[clap(short, long, required = false, default_value = "active")]
+    #[arg(short, long, required = false, default_value = "active")]
     pub level: String,
     /// Push Badge
-    #[clap(short, long, required = false, value_parser = clap::value_parser!(u64).range(0..=9999999999))]
+    #[arg(short, long, required = false, value_parser = clap::value_parser!(u64).range(0..=9999999999))]
     pub badge: Option<u64>,
     /// Group messages
     /// pushes will be displayed in groups in the notification center
-    #[clap(short, long, required = false, verbatim_doc_comment)]
+    #[arg(short, long, required = false, verbatim_doc_comment)]
     pub group: Option<String>,
     /// You can set different ringtones for the push
-    #[clap(short, long, required = false, default_value = "chime.caf")]
+    #[arg(short, long, required = false, default_value = "chime.caf")]
     pub sound: String,
     /// Set a custom icon for the push
     /// the set icon will replace the default Bark icon
-    #[clap(short, long, required = false, default_value = "https://github.com/66f94eae/bark/raw/main/bot.jpg", verbatim_doc_comment)]
+    #[arg(short, long, required = false, default_value = "https://github.com/66f94eae/bark/raw/main/bot.jpg", verbatim_doc_comment)]
     pub icon: String,
     /// Pass true to save the push else will not save the push
     /// if not passed, it will be decided according to the app's internal settings
-    #[clap(long, required = false, verbatim_doc_comment)]
+    #[arg(long, required = false, verbatim_doc_comment)]
     pub archive: Option<bool>,
     /// Pass false to disable
     /// Automatically copy push content below iOS 14.5
     /// above iOS 14.5, you need to manually long-press the push or pull down the push
-    #[clap(long, required = false, default_value = "true", verbatim_doc_comment)]
+    #[arg(long, required = false, default_value = "true", verbatim_doc_comment)]
     pub auto_copy: Option<bool>,
     /// When copying the push, specify the content to copy
     /// if this parameter is not provided, the entire push content will be copied
-    #[clap(short, long, required = false, verbatim_doc_comment)]
+    #[arg(short, long, required = false, verbatim_doc_comment)]
     pub copy: Option<String>,
     /// The URL to jump to when clicking the push, supports URL Scheme and Universal Link
-    #[clap(short, long, required = false)]
+    #[arg(short, long, required = false)]
     pub url: Option<String>,
     /// aes128
-    #[clap(long, required = false, conflicts_with_all = &["aes192", "aes256"])]
+    #[arg(long, required = false, conflicts_with_all = &["aes192", "aes256"])]
     pub aes128: bool,
     /// aes256
-    #[clap(long, required = false, conflicts_with_all = &["aes128", "aes192"])]
+    #[arg(long, required = false, conflicts_with_all = &["aes128", "aes192"])]
     pub aes256: bool,
     /// aes192
-    #[clap(long, required = false, conflicts_with_all = &["aes128", "aes256"])]
+    #[arg(long, required = false, conflicts_with_all = &["aes128", "aes256"])]
     pub aes192: bool,
     /// cbc mode
-    #[clap(long, required = false, conflicts_with_all = &["ecb", "gcm"])]
+    #[arg(long, required = false, conflicts_with_all = &["ecb", "gcm"])]
     pub cbc: bool,
     /// ecb mode
-    #[clap(long, required = false, conflicts_with_all = &["cbc", "gcm"])]
+    #[arg(long, required = false, conflicts_with_all = &["cbc", "gcm"])]
     pub ecb: bool,
     /// gcm mode
-    #[clap(long, required = false, conflicts_with_all = &["cbc", "ecb"])]
+    #[arg(long, required = false, conflicts_with_all = &["cbc", "ecb"])]
     pub gcm: bool,
     /// encryption key
-    #[clap(short, long, required = false)]
+    #[arg(short, long, required = false)]
     pub key: Option<String>,
     /// iv
-    #[clap(long, required = false)]
+    #[arg(long, required = false)]
     pub iv: Option<String>,
+
+    #[command(subcommand)]
+    pub command: Option<CMDCommand>,
+}
+
+#[derive(clap::Subcommand, Debug)]
+pub enum CMDCommand {
+    #[clap(about = "alias of device token")]
+    User {
+        /// add user like "alias:device_token" ["alias1:device_token1" ...]
+        #[arg(long, required = false, conflicts_with_all = &["del", "get"], num_args = 1..)]
+        add: Vec<UserInfo>,
+        /// delete user like "alias1" ["alias2" ...] 
+        #[arg(long, required = false, conflicts_with_all = &["add", "get"], num_args = 1..)]
+        del: Vec<String>,
+        /// get user like "alias"
+        /// if not passed, all users will be displayed
+        #[arg(long, required = false, conflicts_with_all = &["add", "del"], verbatim_doc_comment, num_args = 0..=1)]
+        get: String,
+    },
+    
 }
 
 impl CMD {
-    pub fn parse() -> Self {
-        let mut cmd = CMD::command();
+    pub fn parse(run_file: &mut RunFile) -> Self {
+        let mut cmd = CMD::command()
+            .subcommand_negates_reqs(true)
+            .subcommand_required(false);
+
         let long_version: String = format!("{}\ncommit: {}\nbuild-date: {}", env!("CARGO_PKG_VERSION"), env!("GIT_COMMIT"),env!("BUILD_DATE"));
         let long_version: &str = Box::leak(long_version.into_boxed_str());
         cmd = cmd.long_version(long_version);
      
         let mut matches: ArgMatches = cmd.get_matches_mut();
-
-        match CMD::from_arg_matches(&mut matches) {
-            Ok(c) => {
-                c.validate(&mut cmd);
-                c
+        
+        match matches.subcommand() {
+            Some(("user", user_matches)) => {
+                if user_matches.contains_id("add") {
+                    let users: Vec<&UserInfo> = user_matches.get_many("add").unwrap().collect();
+                    run_file.add_user_info(users);
+                } else if user_matches.contains_id("del") {
+                    let users: Vec<&String> = user_matches.get_many("del").unwrap().collect();
+                    run_file.remove_user_info(users);
+                } else if user_matches.contains_id("get") {
+                    let user_name: Option<&String> = user_matches.get_one::<String>("get");
+                    match user_name {
+                        None => {
+                            println!("user list:");
+                            run_file.get_user_info().iter().for_each(|u| {
+                                println!("{}", u);
+                            });
+                        },
+                        Some(user_name) => {
+                            match run_file.get_user_info_by_name(user_name) {
+                                Some(u) => {
+                                    println!("{}", u);
+                                },
+                                None => {
+                                    eprintln!("user {} not found", user_name);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    let _ = cmd.print_help();
+                    exit(0x00);
+                }
+                exit(0x00);
             },
-            Err(e) => e.exit(),
+            _ => {
+                match CMD::from_arg_matches(&mut matches) {
+                    Ok(c) => {
+                        c.validate(&mut cmd);
+                        c
+                    },
+                    Err(e) => {
+                        eprintln!("err.... {}", e.to_string());
+                        e.exit()
+                    },
+                }
+            }
         }
+        
 
     }
 

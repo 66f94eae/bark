@@ -27,15 +27,20 @@ use std::io::Write;
 use cmd::CMD;
 use module::bark_item::Bark;
 use traits::sender::Sender;
+use util::file_utils;
 
 mod config;
 mod apns;
 mod module;
 mod traits;
 mod cmd;
+mod util;
 
-fn main() { 
-    let cmd: CMD = CMD::parse();
+fn main() {
+
+    let mut run_file = file_utils::read_runfile_from_file(config::RUN_FILE_BARK);
+    
+    let cmd: CMD = CMD::parse(&mut run_file);
 
     let msg: module::msg::Msg = cmd.to_msg();
     
@@ -44,6 +49,7 @@ fn main() {
     }
 
     let bark: Bark<'_> = Bark::new(&msg);
+    
     bark.send(cmd.receiver);
 }
 

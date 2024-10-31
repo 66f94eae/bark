@@ -26,12 +26,12 @@ use std::{thread, time::Duration};
 use crate::{config, module::msg::Msg};
 
 
-pub fn do_send(msg: &Msg, topic: &str, devices: Vec<String>, token: String) {
+pub fn do_send(msg: &Msg, topic: &str, devices: Vec<String>, token: &str) {
     
     let client: reqwest::blocking::Client = reqwest::blocking::ClientBuilder::new().http2_prior_knowledge().build().unwrap();
     let mut tasks: Vec<thread::JoinHandle<()>> = Vec::new();
     for device  in devices.into_iter() {
-        let token: String = token.clone();
+        let token: String = String::from(token);
         let topic: String = String::from(topic);
         let body: String = msg.serialize();
         let client: reqwest::blocking::Client = client.clone();
