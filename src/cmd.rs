@@ -25,7 +25,7 @@ use std::process::exit;
 
 use clap::{ArgMatches, Command, CommandFactory, FromArgMatches};
 
-use crate::module::{msg::Msg, run_file::RunFile, user_info::UserInfo};
+use crate::{config, module::{msg::Msg, run_file::RunFile, user_info::UserInfo}, util::file_utils};
 
 
 #[derive(clap::Parser, Debug)]
@@ -77,10 +77,10 @@ pub struct CMD {
     pub auto_copy: Option<bool>,
     /// When copying the push, specify the content to copy
     /// if this parameter is not provided, the entire push content will be copied
-    #[arg(short, long, required = false, verbatim_doc_comment)]
+    #[arg(long, required = false, verbatim_doc_comment)]
     pub copy: Option<String>,
     /// The URL to jump to when clicking the push, supports URL Scheme and Universal Link
-    #[arg(short, long, required = false)]
+    #[arg(long, required = false)]
     pub url: Option<String>,
     /// aes128
     #[arg(long, required = false, conflicts_with_all = &["aes192", "aes256"])]
@@ -106,6 +106,9 @@ pub struct CMD {
     /// iv
     #[arg(long, required = false)]
     pub iv: Option<String>,
+    /// config file in toml format
+    #[arg(short, long, required = false, default_value = config::RUN_FILE_BARK)]
+    pub config: String,
 
     #[command(subcommand)]
     pub command: Option<CMDCommand>,
@@ -130,7 +133,7 @@ pub enum CMDCommand {
 }
 
 impl CMD {
-    pub fn parse(run_file: &mut RunFile) -> Self {
+    pub fn parse() -> Self {
         let mut cmd = CMD::command()
             .subcommand_negates_reqs(true)
             .subcommand_required(false);
@@ -140,7 +143,9 @@ impl CMD {
         cmd = cmd.long_version(long_version);
      
         let mut matches: ArgMatches = cmd.get_matches_mut();
-        
+        let config_path: &String = matches.get_one("config").unwrap();
+        let mut run_file: RunFile = file_utils::read_runfile_from_file(config_path);
+
         match matches.subcommand() {
             Some(("user", user_matches)) => {
                 if user_matches.contains_id("add") {
@@ -153,18 +158,15 @@ impl CMD {
                     let user_name: Option<&String> = user_matches.get_one::<String>("get");
                     match user_name {
                         None => {
-                            println!("user list:");
-                            run_file.get_user_info().iter().for_each(|u| {
-                                println!("{}", u);
-                            });
+                            UserInfo::pretty_print(run_file.get_user_info());
                         },
                         Some(user_name) => {
                             match run_file.get_user_info_by_name(user_name) {
                                 Some(u) => {
-                                    println!("{}", u);
+                                    UserInfo::pretty_print(vec![u]);
                                 },
                                 None => {
-                                    eprintln!("user {} not found", user_name);
+                                    UserInfo::pretty_print(vec![]);
                                 }
                             }
                         }

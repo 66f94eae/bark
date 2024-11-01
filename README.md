@@ -51,7 +51,7 @@ Commands:
 Options:
   -t, --title <TITLE>
           title
-          
+
           [default: Notification]
 
   -m, --msg <MSG>
@@ -65,7 +65,7 @@ Options:
 
   -l, --level <LEVEL>
           Push Interruption Level(active, timeSensitive, passive)
-          
+
           [default: active]
 
   -b, --badge <BADGE>
@@ -77,34 +77,34 @@ Options:
 
   -s, --sound <SOUND>
           You can set different ringtones for the push
-          
+
           [default: chime.caf]
 
   -i, --icon <ICON>
           Set a custom icon for the push
           the set icon will replace the default Bark icon
-          
+
           [default: https://github.com/66f94eae/bark/raw/main/bot.jpg]
 
       --archive <ARCHIVE>
           Pass true to save the push else will not save the push
           if not passed, it will be decided according to the app's internal settings
-          
+
           [possible values: true, false]
 
       --auto-copy <AUTO_COPY>
           Pass false to disable
           Automatically copy push content below iOS 14.5
           above iOS 14.5, you need to manually long-press the push or pull down the push
-          
+
           [default: true]
           [possible values: true, false]
 
-  -c, --copy <COPY>
+      --copy <COPY>
           When copying the push, specify the content to copy
           if this parameter is not provided, the entire push content will be copied
 
-  -u, --url <URL>
+      --url <URL>
           The URL to jump to when clicking the push, supports URL Scheme and Universal Link
 
       --aes128
@@ -130,6 +130,11 @@ Options:
 
       --iv <IV>
           iv
+
+  -c, --config <CONFIG>
+          config file in toml format
+
+          [default: /run/bark]
 
   -h, --help
           Print help (see a summary with '-h')
