@@ -29,6 +29,9 @@ pub struct UserInfo {
     device_token: String
 }
 
+const HEAD_NICKE_NAME: &str = "ALIAS";
+const HEAD_DEVICE_TOKEN: &str = "DEVICE_TOKEN";
+
 impl UserInfo {
     pub fn new(nick_name: &str, device_token: &str) -> UserInfo {
         UserInfo {
@@ -37,12 +40,25 @@ impl UserInfo {
         }
    }
    
-   pub fn get_nick_name(&self) -> &str {
+    pub fn get_nick_name(&self) -> &str {
        &self.nick_name
-   }
-   pub fn get_device_token(&self) -> &str {
+    }
+    pub fn get_device_token(&self) -> &str {
        &self.device_token
-   }
+    }
+
+    pub fn pretty_print(users: Vec<UserInfo>) {
+        let max_nicke_name_len = users.iter().map(|u| u.nick_name.len()).max().unwrap_or_else(|| HEAD_NICKE_NAME.len());
+        let max_device_token_len = users.iter().map(|u| u.device_token.len()).max().unwrap_or_else(|| HEAD_DEVICE_TOKEN.len());
+    
+        println!("{:<max_nicke_name_len$}    {:<max_device_token_len$}", HEAD_NICKE_NAME, HEAD_DEVICE_TOKEN);
+        println!("{:-<max_nicke_name_len$}    {:-<max_device_token_len$}", "", "");
+
+        users.iter().for_each(|u| {
+            println!("{:<max_nicke_name_len$}    {:<max_device_token_len$}", u.nick_name, u.device_token);
+        });
+    }
+
 }
 
 impl std::str::FromStr for UserInfo {
@@ -60,5 +76,26 @@ impl std::str::FromStr for UserInfo {
 impl std::fmt::Display for UserInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}: {}", self.nick_name, self.device_token)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn test_user_info_from_str() {
+        let mut us: Vec<UserInfo> = Vec::new();
+        for i in vec![1,9,10,99,100,999,1000] {
+            let u = format!("alias_{}:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx{}", i, i);
+            let u = u.parse::<UserInfo>().unwrap();
+            us.push(u);
+        }
+
+        UserInfo::pretty_print(us);
+        println!();
+        UserInfo::pretty_print(vec![]);
+
     }
 }
