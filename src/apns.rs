@@ -45,15 +45,22 @@ pub fn do_send(msg: &Msg, topic: &str, devices: Vec<String>, token: &str) {
                         .header("apns-topic", topic)
                         .body(body)
                         .send();
-                match resp {
+                let msg: Option<String> = match resp {
                     Ok(r) => {
                         if r.status() != reqwest::StatusCode::OK {
-                            println!("send to {} failed: {:?}", device, r.text().unwrap());
+                            // eprintln!("send to {} failed due to: {}", device, r.text().unwrap());
+                            Some(r.text().unwrap())
+                        } else {
+                            None
                         }
                     }
                     Err(e) => {
-                        println!("can not connect to apns server: {:?}", e);
+                        // eprintln!("can not connect to apns server: {:?}", e);
+                        Some(e.to_string())
                     }
+                };
+                if let Some(msg) = msg {
+                    eprintln!("Send to {} failed! Detail as below:\n {}", device, msg);
                 }
             })
         );

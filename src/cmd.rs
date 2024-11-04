@@ -184,7 +184,7 @@ impl CMD {
                         c
                     },
                     Err(e) => {
-                        eprintln!("err.... {}", e.to_string());
+                        eprintln!("error occured: {}", e.to_string());
                         e.exit()
                     },
                 }
