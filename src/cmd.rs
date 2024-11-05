@@ -104,6 +104,7 @@ pub struct CMD {
     #[arg(short, long, required = false)]
     pub key: Option<String>,
     /// iv
+    /// if not passed, it will be randomly generated
     #[arg(long, required = false)]
     pub iv: Option<String>,
     /// config file in toml format
