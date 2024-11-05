@@ -21,5 +21,5 @@
 // SOFTWARE.
 
 
-pub const RUN_FILE_BARK: &str = "/run/bark";
 pub const APNS_HOST: &str = "api.push.apple.com";
+pub const RUN_FILE_BARK: &str = env!("RUN_FILE_BARK");
