@@ -129,7 +129,7 @@ Options:
           encryption key
 
       --iv <IV>
-          iv
+          iv if not passed, it will be randomly generated
 
   -c, --config <CONFIG>
           config file in toml format
@@ -165,10 +165,19 @@ Options:
 
 
 ## Example
-
+1. send notification to user1 and user2 after 10 seconds
 ```bash
 bark -m "hello world" -r "user1,user2" -d 10
 ```
+2. send notification to user1 and user2 with custom title and message
+```bash
+bark -m "hello world" -r "user1,user2" -t "custom title"
+```
+3. send encrypt notification to user1 and user2, with *aes128* encryption algorithm and *gcm* mode, **iv** will randomly generted, **key,ase128,gcm** must the same as the receiver
+```bash
+bark -m "hello world" -r "user1,user2" -k "encrypt key" -aes128 --gcm
+```
+
 
 ## known issue
 - not all param support in encrypt mode [detail in code](https://github.com/Finb/Bark/blob/master/NotificationServiceExtension/Processor/CiphertextProcessor.swift#L13)
