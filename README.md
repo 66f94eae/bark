@@ -190,7 +190,7 @@ bark -m "hello world" -r "user1,user2" -t "custom title"
 ```bash
 bark -m "hello world" -r "user1,user2" -k "encrypt key" -aes128 --gcm
 ```
-4.<a id="step4"></a> use "alis1","alias2" as alias of "device_token1","device_token2"
+4. <a id="step4"></a> use "alis1","alias2" as alias of "device_token1","device_token2"
 ```bash
 bark user --add "alias1:device_token1" "alias2:device_token2"
 ```
