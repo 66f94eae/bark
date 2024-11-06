@@ -34,9 +34,14 @@ pub trait Sender {
     fn topic(&self) -> &str;
 
     
-    fn send(&self, devices: Vec<String>) {
-        let devices = self.run_file().translate_to_real_devices(devices);
-        crate::apns::do_send(self.msg(), self.topic(), devices, &self.get_token());
+    fn send(&self, devices: &Vec<String>) {
+        let alias_devices: std::collections::HashMap<String, String> = self.run_file().translate_to_real_devices(&devices);
+        let devices: Vec<String> = alias_devices.iter().map(|(_k, v)| v.to_string()).collect::<Vec<String>>();
+        if let Some(failed) =  crate::apns::send(self.msg(), self.topic(), devices, &self.get_token()) {
+            failed.iter().for_each(|(device, msg)| {
+                eprintln!("Send to {} failed: {}", device, msg);
+            });
+        }
     }
 
     fn get_token(&self) -> String {

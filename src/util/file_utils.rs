@@ -50,7 +50,7 @@ pub fn read_runfile_from_file(path: &str) -> RunFile {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
+    use std::{collections::HashMap, path::PathBuf};
 
     use super::*;
     
@@ -71,7 +71,7 @@ mod tests {
     fn test_read_from_file() {
         let mut rf = read_runfile_from_file(tmp_path().to_str().unwrap());
         
-        assert_eq!(vec!["nick_name3".to_string()], rf.translate_to_real_devices(vec!["nick_name3".to_string()]));
+        assert_eq!(HashMap::from([("nick_name3".to_string(), "nick_name3".to_string())]), rf.translate_to_real_devices(vec!["nick_name3".to_string()].as_ref()));
 
         rf.remove_user_info(vec![&"nick_name3".to_string()]);
 

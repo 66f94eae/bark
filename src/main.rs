@@ -46,7 +46,7 @@ fn main() {
 
     let bark: Bark<'_> = Bark::new(&msg);
     
-    bark.send(cmd.receiver);
+    bark.send(&cmd.receiver);
 }
 
 // show count down in terminal
