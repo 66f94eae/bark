@@ -115,15 +115,18 @@ impl RunFile {
         toml::from_str(str)
     }
 
-    pub fn translate_to_real_devices(&self, names: Vec<String>) -> Vec<String> {
-        let mut devices: Vec<String> = Vec::<String>::new();
-        let user_dict = self.get_user_info().iter().map( |user| (user.get_nick_name().to_string(), user.get_device_token().to_string()))
+    /// translate alias to device token
+    /// 
+    /// if not found, return the name itself
+    /// 
+    /// return {alias1: real_device_token1, not_found_alias2: not_found_alias2 ... }
+    pub fn translate_to_real_devices(&self, names: &Vec<String>) -> HashMap<String,String> {
+        let mut devices: HashMap<String, String> = HashMap::<String, String>::new();
+        let user_dict: HashMap<String, String> = self.get_user_info().iter().map( |user| (user.get_nick_name().to_string(), user.get_device_token().to_string()))
             .collect::<HashMap::<String, String>>();
         
         for name in names {
-            devices.push(
-                user_dict.get(&name).or_else(|| Some(&name)).unwrap().to_string()
-            );
+            devices.insert(name.clone(), user_dict.get(name).or_else(|| Some(name)).unwrap().to_string());
         }
         
         devices
@@ -181,7 +184,7 @@ mod tests {
         
         let run_file = RunFile::new_for_test();
         
-        assert_eq!(vec!["device_token1".to_string()], run_file.translate_to_real_devices(vec!["nick_name1".to_string()]));
-        assert_eq!(vec!["nick_name3".to_string()], run_file.translate_to_real_devices(vec!["nick_name3".to_string()]));
+        assert_eq!(HashMap::from([("nick_name1".to_string(), "device_token1".to_string())]), run_file.translate_to_real_devices(vec!["nick_name1".to_string()].as_ref()));
+        assert_eq!(HashMap::from([("nick_name3".to_string(), "nick_name3".to_string())]), run_file.translate_to_real_devices(vec!["nick_name3".to_string()].as_ref()));
     }
 }
