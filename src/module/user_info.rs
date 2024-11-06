@@ -48,8 +48,8 @@ impl UserInfo {
     }
 
     pub fn pretty_print(users: Vec<UserInfo>) {
-        let max_nicke_name_len = users.iter().map(|u| u.nick_name.len()).max().unwrap_or_else(|| HEAD_NICKE_NAME.len());
-        let max_device_token_len = users.iter().map(|u| u.device_token.len()).max().unwrap_or_else(|| HEAD_DEVICE_TOKEN.len());
+        let max_nicke_name_len: usize = std::cmp::max(users.iter().map(|u| u.nick_name.len()).max().unwrap_or_else(|| 1), HEAD_NICKE_NAME.len());
+        let max_device_token_len: usize = std::cmp::max(users.iter().map(|u| u.device_token.len()).max().unwrap_or_else(|| 1), HEAD_DEVICE_TOKEN.len());
     
         println!("{:<max_nicke_name_len$}    {:<max_device_token_len$}", HEAD_NICKE_NAME, HEAD_DEVICE_TOKEN);
         println!("{:-<max_nicke_name_len$}    {:-<max_device_token_len$}", "", "");
