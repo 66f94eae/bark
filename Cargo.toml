@@ -1,6 +1,6 @@
 [package]
 name = "bark"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["66f94eae <66f94eae@gmail.com>"]
 description = "This a cli tool for send notification to your device"
