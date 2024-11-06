@@ -24,15 +24,26 @@ And it is also designed to be secure, it uses Apple Push Notification service (A
   - `clap`: For parsing command-line arguments
   - `openssl`: For cryptographic operations and JWT token generation
   - `reqwest`: For making HTTP requests to the APNs servers
+  - `toml`: For parsing configuration files
+  - `serde`: For parsing TOML configuration files
+- **Build Dependencies**:
+  - `git2`: For git operations 
+  - `chrono`: For time operations
 
 ## Installation
 
 To install Bark CLI, you need to have Rust and Cargo installed on your system. Then, you can build the project from source:
 
+### Build from source
 ```bash
 git clone https://github.com/66f94eae/bark.git
 cd bark
 cargo build --release
+```
+### Install from release
+```bash
+# at the root of the project
+cargo install --path .
 ```
 
 ## Usage
@@ -160,7 +171,9 @@ Options:
 
 **Note:** 
 - The `-k` option is used to specify the encryption key, which is required when using the `--aes128`, `--aes192`, `--aes256`options.
-- The `receiver` is a comma-separated list of *device tokens*
+- The `receiver` is a comma-separated list of *device tokens or alias* like `user1,user2,alias1...`
+<br/>The program will try to find the corresponding device token based on the alias.
+<br/>If the alias is not found, the program will use the `string` which you input directly.
 - ![how to get your device token](https://github.com/66f94eae/bark/raw/main/device_token.png "how to get your device token")
 
 
@@ -176,6 +189,43 @@ bark -m "hello world" -r "user1,user2" -t "custom title"
 3. send encrypt notification to user1 and user2, with *aes128* encryption algorithm and *gcm* mode, **iv** will randomly generted, **key,ase128,gcm** must the same as the receiver
 ```bash
 bark -m "hello world" -r "user1,user2" -k "encrypt key" -aes128 --gcm
+```
+4.<a id="step4"></a> use "alis1","alias2" as alias of "device_token1","device_token2"
+```bash
+bark user --add "alias1:device_token1" "alias2:device_token2"
+```
+5. delete "alias1"
+```bash
+bark user --del "alias1"
+```
+6. get "alias1" device token
+```bash
+bark user --get "alias1"
+
+output:
+ALIAS     DEVICE_TOKEN 
+------    -------------
+alias1    device_token1
+```
+7. get all users
+```bash
+bark user --get
+
+output:
+ALIAS     DEVICE_TOKEN 
+------    -------------
+alias1    device_token1
+alias2    device_token2
+```
+8. send notification use alias instead of device token
+```bash
+bark -m "hello world" -r "alias1,alias2"
+```
+9. send notification use alias and device token
+<br/>if you has add alias like [step 4](#step4)
+<br/>the program will send to device_token1 and device_token5 in background
+```bash
+bark -m "hello world" -r "alias1,device_token5"
 ```
 
 
