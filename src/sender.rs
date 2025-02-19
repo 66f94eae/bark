@@ -59,9 +59,12 @@ impl Sender {
 
     pub fn send(&mut self, msg: &Msg, devices: &Vec<String>) {
         let alias_devices: std::collections::HashMap<String, String> = self.run_file().translate_to_real_devices(&devices);
-        let devices: Vec<&str> = alias_devices.iter().map(|(_k, v)| v.as_str()).collect();
+        let devices = alias_devices
+            .iter()
+            .map(|(_alias, real_device)| real_device.to_string())
+            .collect::<Vec<String>>();
 
-        let send_result: Option<Vec<String>> = self.bark.send(msg, &devices);
+        let send_result: Option<Vec<String>> = self.bark.send(msg, devices);
         let (time_stamp, token) = self.bark.token();
         self.run_file().set_token(time_stamp, token.as_str());
 

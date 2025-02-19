@@ -271,22 +271,6 @@ impl CMD {
             msg.set_url(&url);
         }
 
-        if self.aes128 {
-            msg.set_enc_type("aes128");
-        } else if self.aes192 {
-            msg.set_enc_type("aes192");
-        } else if self.aes256 {
-            msg.set_enc_type("aes256");
-        }
-
-        if self.cbc {
-            msg.set_mode("cbc");
-        } else if self.ecb {
-            msg.set_mode("ecb");
-        } else if self.gcm {
-            msg.set_mode("gcm");
-        }
-
         if let Some(key) = self.key.clone() {
             msg.set_key(&key);
 
@@ -295,7 +279,22 @@ impl CMD {
             } else {
                 msg.gen_iv();
             }
+        }
 
+        if self.aes128 {
+            msg.set_enc_type(bark_dev::msg::EncryptType::AES128);
+        } else if self.aes192 {
+            msg.set_enc_type(bark_dev::msg::EncryptType::AES192);
+        } else if self.aes256 {
+            msg.set_enc_type(bark_dev::msg::EncryptType::AES256);
+        }
+
+        if self.cbc {
+            msg.set_mode(bark_dev::msg::EncryptMode::CBC);
+        } else if self.ecb {
+            msg.set_mode(bark_dev::msg::EncryptMode::ECB);
+        } else if self.gcm {
+            msg.set_mode(bark_dev::msg::EncryptMode::GCM);
         }
         msg
     }
