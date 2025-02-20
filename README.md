@@ -22,10 +22,9 @@ And it is also designed to be secure, it uses Apple Push Notification service (A
 - **Language**: Rust
 - **Dependencies**:
   - `clap`: For parsing command-line arguments
-  - `openssl`: For cryptographic operations and JWT token generation
-  - `reqwest`: For making HTTP requests to the APNs servers
   - `toml`: For parsing configuration files
   - `serde`: For parsing TOML configuration files
+  - `bark-dev`: bark development library
 - **Build Dependencies**:
   - `git2`: For git operations 
   - `chrono`: For time operations

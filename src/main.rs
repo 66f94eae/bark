@@ -22,31 +22,27 @@
 
 
 use std::io::Write;
-
-
 use cmd::CMD;
-use module::bark_item::Bark;
-use traits::sender::Sender;
+use sender::Sender;
 
 mod config;
-mod apns;
 mod module;
-mod traits;
 mod cmd;
 mod util;
+mod sender;
 
 fn main() {
     let cmd: CMD = CMD::parse();
 
-    let msg: module::msg::Msg = cmd.to_msg();
+    let msg: bark_dev::msg::Msg = cmd.to_msg();
     
     if let Some(delay) = cmd.delay {
         count_down(delay);
     }
 
-    let bark: Bark<'_> = Bark::new(&msg);
-    
-    bark.send(&cmd.receiver);
+    let mut send: Sender = Sender::new(config::RUN_FILE_BARK.to_string());
+
+    send.send(&msg, &cmd.receiver);
 }
 
 // show count down in terminal

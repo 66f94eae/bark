@@ -23,7 +23,7 @@
 
 use std::{collections::HashMap, process::exit};
 
-use crate::util::{file_utils, time_utils};
+use crate::util::file_utils;
 
 use super::{token::Token, user_info::UserInfo};
 use serde::{Serialize, Deserialize};
@@ -52,21 +52,23 @@ impl RunFile {
             ..rf
         }
     }
-    pub fn get_token(&mut self, auth_key_id: &str, team_id: &str, key: &[u8]) -> Option<String> {
-        
-        if self.token.is_none() 
-            || self.token.as_mut().is_some_and(|t| {
-            t.get_refresh_at() - time_utils::curr_time_secs() > 2700
-        }) {
-            self.token = Some(Token::refresh_token(auth_key_id, team_id, key));
-            self.save();
+    pub fn get_token(&self) -> Option<Token> {
+        match self.token.clone() {
+            Some(t) => Some(t),
+            None => None
         }
-
-        Some(self.token.as_ref().unwrap().get_token().to_string())
     }
-    // pub fn set_token(&mut self, token: &str) {
-    //     self.token = Token::new(token);
-    // }
+
+    pub fn set_token(&mut self, time_stamp: u64, token: &str) {
+        if let Some(t) = self.token.as_mut() {
+            if t.get_refresh_at() == time_stamp {
+                return;
+            }
+        }
+        self.token = Some(Token::new(time_stamp, token));
+        self.save();
+    }
+
     pub fn get_user_info(&self) -> Vec<UserInfo> {
         if let Some(user_info) = &self.user_info {
             user_info.clone()

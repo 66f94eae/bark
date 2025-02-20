@@ -23,9 +23,10 @@
 
 use std::process::exit;
 
+use bark_dev::msg::{self, Msg};
 use clap::{ArgMatches, Command, CommandFactory, FromArgMatches};
 
-use crate::{config, module::{msg::Msg, run_file::RunFile, user_info::UserInfo}, util::file_utils};
+use crate::{config, module::{run_file::RunFile, user_info::UserInfo}, util::file_utils};
 
 
 #[derive(clap::Parser, Debug)]
@@ -242,62 +243,62 @@ impl CMD {
             cmd.error(clap::error::ErrorKind::MissingRequiredArgument, "receiver is required and can not be empty")
                 .exit();
         }
-        
     }
 
     pub fn to_msg(&self) -> Msg {
 
-        let mut msg: Msg = Msg::new(self.title.clone(), self.msg.clone());
-        msg.set_level(self.level.clone());
+        let mut msg: Msg = Msg::new(&self.title, &self.msg);
+        match self.level.to_lowercase().as_str() {
+            "timesensitive" => msg.set_level(msg::Level::TIMESENSITIVE),
+            "passive" => msg.set_level(msg::Level::PASSIVE),
+            _ => msg.set_level(msg::Level::ACTIVE)
+        };
         if let Some(badge) = self.badge {
             msg.set_badge(badge);
         }
-        msg.set_sound(self.sound.clone());
-        msg.set_icon(self.icon.clone());
+        msg.set_sound(&self.sound);
+        msg.set_icon(&self.icon);
         if let Some(group) = self.group.clone() {
-            msg.set_group(group);
+            msg.set_group(&group);
         }
         if let Some(archive) = self.archive {
-            msg.set_is_archive(if archive { 1 } else { 0 });
+            msg.set_is_archive(archive);
         }
         if let Some(auto_copy) = self.auto_copy {
-            msg.set_auto_copy(auto_copy as u8);
+            msg.set_auto_copy(auto_copy);
         }
         if let Some(copy) = self.copy.clone() {
-            msg.set_copy(copy);
+            msg.set_copy(&copy);
         }
 
         if let Some(url) = self.url.clone() {
-            msg.set_url(url);
-        }
-
-        if self.aes128 {
-            msg.set_enc_type("aes128".to_string());
-        } else if self.aes192 {
-            msg.set_enc_type("aes192".to_string());
-        } else if self.aes256 {
-            msg.set_enc_type("aes256".to_string());
-        }
-
-        if self.cbc {
-            msg.set_mode("cbc".to_string());
-        } else if self.ecb {
-            msg.set_mode("ecb".to_string());
-        } else if self.gcm {
-            msg.set_mode("gcm".to_string());
+            msg.set_url(&url);
         }
 
         if let Some(key) = self.key.clone() {
-            msg.set_key(key);
+            msg.set_key(&key);
 
             if let Some(iv) = self.iv.clone() {
-                msg.set_iv(iv);
+                msg.set_iv(&iv);
             } else {
-                let mut iv: [u8; 16] = [0u8; 16];
-                openssl::rand::rand_bytes(&mut iv).unwrap();
-                msg.set_iv(iv.iter().map(|b| format!("{:02x}", b)).collect::<String>().split_off(16));
+                msg.gen_iv();
             }
+        }
 
+        if self.aes128 {
+            msg.set_enc_type(bark_dev::msg::EncryptType::AES128);
+        } else if self.aes192 {
+            msg.set_enc_type(bark_dev::msg::EncryptType::AES192);
+        } else if self.aes256 {
+            msg.set_enc_type(bark_dev::msg::EncryptType::AES256);
+        }
+
+        if self.cbc {
+            msg.set_mode(bark_dev::msg::EncryptMode::CBC);
+        } else if self.ecb {
+            msg.set_mode(bark_dev::msg::EncryptMode::ECB);
+        } else if self.gcm {
+            msg.set_mode(bark_dev::msg::EncryptMode::GCM);
         }
         msg
     }
