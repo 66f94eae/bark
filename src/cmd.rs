@@ -248,11 +248,9 @@ impl CMD {
     pub fn to_msg(&self) -> Msg {
 
         let mut msg: Msg = Msg::new(&self.title, &self.msg);
-        match self.level.to_lowercase().as_str() {
-            "timesensitive" => msg.set_level(msg::Level::TIMESENSITIVE),
-            "passive" => msg.set_level(msg::Level::PASSIVE),
-            _ => msg.set_level(msg::Level::ACTIVE)
-        };
+        if let Some(level) = msg::Level::from_str(&self.level) {
+            msg.set_level(level);
+        }
         if let Some(badge) = self.badge {
             msg.set_badge(badge);
         }
