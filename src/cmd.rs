@@ -23,7 +23,7 @@
 
 use std::process::exit;
 
-use bark_dev::msg::Msg;
+use bark_dev::msg::{self, Msg};
 use clap::{ArgMatches, Command, CommandFactory, FromArgMatches};
 
 use crate::{config, module::{run_file::RunFile, user_info::UserInfo}, util::file_utils};
@@ -248,7 +248,11 @@ impl CMD {
     pub fn to_msg(&self) -> Msg {
 
         let mut msg: Msg = Msg::new(&self.title, &self.msg);
-        msg.set_level(&self.level);
+        match self.level.to_lowercase().as_str() {
+            "timesensitive" => msg.set_level(msg::Level::TIMESENSITIVE),
+            "passive" => msg.set_level(msg::Level::PASSIVE),
+            _ => msg.set_level(msg::Level::ACTIVE)
+        };
         if let Some(badge) = self.badge {
             msg.set_badge(badge);
         }
@@ -258,10 +262,10 @@ impl CMD {
             msg.set_group(&group);
         }
         if let Some(archive) = self.archive {
-            msg.set_is_archive(if archive { 1 } else { 0 });
+            msg.set_is_archive(archive);
         }
         if let Some(auto_copy) = self.auto_copy {
-            msg.set_auto_copy(auto_copy as u8);
+            msg.set_auto_copy(auto_copy);
         }
         if let Some(copy) = self.copy.clone() {
             msg.set_copy(&copy);
