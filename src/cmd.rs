@@ -108,6 +108,12 @@ pub struct CMD {
     /// if not passed, it will be randomly generated
     #[arg(long, required = false)]
     pub iv: Option<String>,
+    /// message id
+    #[arg(long, required = false)]
+    pub id: Option<String>,
+    /// delete msg
+    #[arg(long, required = false, default_value = "false", requires_if("true", "id"))]
+    pub delete: bool,
     /// config file in toml format
     #[arg(short, long, required = false, default_value = config::RUN_FILE_BARK)]
     pub config: String,
@@ -243,6 +249,13 @@ impl CMD {
             cmd.error(clap::error::ErrorKind::MissingRequiredArgument, "receiver is required and can not be empty")
                 .exit();
         }
+
+        if let Some(id) = &self.id {
+            if id.as_bytes().len() >= 64 {
+               cmd.error(clap::error::ErrorKind::InvalidValue, "Invalid msg_id must not exceed 64 bytes.")
+                   .exit();
+            }
+        }
     }
 
     pub fn to_msg(&self) -> Msg {
@@ -298,6 +311,15 @@ impl CMD {
         } else if self.gcm {
             msg.set_mode(bark_dev::msg::EncryptMode::GCM);
         }
+
+        if self.delete {
+            msg.set_deleted();
+        }
+
+        if let Some(ref id) = self.id {
+            msg.set_id(id);
+        }
+
         msg
     }
 }
