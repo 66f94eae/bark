@@ -21,7 +21,7 @@
 // SOFTWARE.
 
 
-use std::io::Write;
+use std::{env, io::Write};
 use cmd::CMD;
 use sender::Sender;
 
@@ -40,7 +40,12 @@ fn main() {
         count_down(delay);
     }
 
-    let mut send: Sender = Sender::new(config::RUN_FILE_BARK.to_string());
+    let bark_file = env::var("RUN_FILE_BARK")
+        .unwrap_or_else(|_| {
+            config::RUN_FILE_BARK.to_string() 
+    });
+
+    let mut send: Sender = Sender::new(bark_file);
 
     send.send(&msg, &cmd.receiver);
 }
