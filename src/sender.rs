@@ -61,8 +61,13 @@ impl Sender {
         let alias_devices: std::collections::HashMap<String, String> = self.run_file().translate_to_real_devices(&devices);
         let devices = alias_devices
             .iter()
+            .filter(|(_,v)| v.len() == 64)    // bark device_id len is 64
             .map(|(_alias, real_device)| real_device.to_string())
             .collect::<Vec<String>>();
+
+        for err_device in alias_devices.iter().filter(|(k,v)| k.eq(v) && v.len() != 64).map(|(_, v)| v) {
+            eprintln!("receiver: [{}], formatter may be invalid", err_device);
+        }
 
         let send_result: Option<Vec<String>> = self.bark.send(msg, devices);
         let (time_stamp, token) = self.bark.token();
