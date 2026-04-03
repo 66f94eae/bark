@@ -45,15 +45,29 @@ fn compile_by_os() -> HashMap<String, String> {
     if cfg!(target_os = "windows") {
         println!("-------- {} --------","detect windows platform");
 
-        os_param.insert("RUN_FILE_BARK".to_string(), std::env::temp_dir().join("bark").to_str().unwrap().to_string());
+        // Persist run file under per-user directory so user_info/token survive reboot.
+        // Kept as an environment-variable template and resolved at runtime.
+        os_param.insert(
+            "RUN_FILE_BARK".to_string(),
+            "%LOCALAPPDATA%\\bark\\bark.conf".to_string(),
+        );
     } else if cfg!(target_os = "macos") {
         println!("-------- {} --------","detect macos platform");
 
-        os_param.insert("RUN_FILE_BARK".to_string(), "/usr/local/run/bark".to_string());
+        // Persist run file in user's Application Support directory.
+        os_param.insert(
+            "RUN_FILE_BARK".to_string(),
+            "~/Library/Application Support/bark/bark.conf".to_string(),
+        );
     } else if cfg!(target_os = "linux") {
         println!("-------- {} --------","detect linux platform");
 
-        os_param.insert("RUN_FILE_BARK".to_string(), "/run/bark".to_string());
+        // /run is typically tmpfs and will be wiped after reboot.
+        // Persist run file in XDG-like user share directory.
+        os_param.insert(
+            "RUN_FILE_BARK".to_string(),
+            "~/.local/share/bark/bark.conf".to_string(),
+        );
     } else {
         panic!("unsupported platform");
     }

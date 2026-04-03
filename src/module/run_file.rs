@@ -134,7 +134,12 @@ impl RunFile {
         devices
     }
 
-    fn save(&self) {
+    fn save(&mut self) {
+        // Persist run file into a resolved absolute path (expand `~`/`%VAR%`).
+        let resolved_path = file_utils::resolve_runfile_path(&self.path);
+        if self.path != resolved_path {
+            self.path = resolved_path;
+        }
         let _ = file_utils::write_runfile_to_file(&self.path, self);
     }
 }

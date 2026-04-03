@@ -144,7 +144,7 @@ Options:
   -c, --config <CONFIG>
           config file in toml format
 
-          [default: /run/bark]
+          [default: ~/.local/share/bark/bark.conf]
 
   -h, --help
           Print help (see a summary with '-h')
