@@ -70,12 +70,16 @@ pub struct CMD {
     /// Pass true to save the push else will not save the push
     /// if not passed, it will be decided according to the app's internal settings
     #[arg(long, required = false, verbatim_doc_comment)]
-    pub archive: Option<bool>,
+    pub archive: bool,
+    /// ttl in seconds
+    /// Effect on archive is true
+    #[arg(long, required = false, value_parser = clap::value_parser!(u64).range(1..), verbatim_doc_comment)]
+    pub ttl: Option<u64>,
     /// Pass false to disable
     /// Automatically copy push content below iOS 14.5
     /// above iOS 14.5, you need to manually long-press the push or pull down the push
     #[arg(long, required = false, default_value = "true", verbatim_doc_comment)]
-    pub auto_copy: Option<bool>,
+    pub auto_copy: bool,
     /// When copying the push, specify the content to copy
     /// if this parameter is not provided, the entire push content will be copied
     #[arg(long, required = false, verbatim_doc_comment)]
@@ -117,6 +121,7 @@ pub struct CMD {
     /// config file in toml format
     #[arg(short, long, required = false, default_value = config::RUN_FILE_BARK)]
     pub config: String,
+    
 
     #[command(subcommand)]
     pub command: Option<CMDCommand>,
@@ -256,6 +261,10 @@ impl CMD {
                    .exit();
             }
         }
+
+        if !self.archive && self.ttl.is_some() {
+            cmd.error(clap::error::ErrorKind::MissingRequiredArgument, "ttl is ignored when archive is not assigned");
+        }
     }
 
     pub fn to_msg(&self) -> Msg {
@@ -269,14 +278,11 @@ impl CMD {
         }
         msg.set_sound(&self.sound);
         msg.set_icon(&self.icon);
+        msg.set_is_archive(self.archive);
+        msg.set_auto_copy(self.auto_copy);
+
         if let Some(group) = self.group.clone() {
             msg.set_group(&group);
-        }
-        if let Some(archive) = self.archive {
-            msg.set_is_archive(archive);
-        }
-        if let Some(auto_copy) = self.auto_copy {
-            msg.set_auto_copy(auto_copy);
         }
         if let Some(copy) = self.copy.clone() {
             msg.set_copy(&copy);
@@ -318,6 +324,10 @@ impl CMD {
 
         if let Some(ref id) = self.id {
             msg.set_id(id);
+        }
+
+        if let Some(ttl) = self.ttl {
+            msg.set_ttl(ttl);
         }
 
         msg
