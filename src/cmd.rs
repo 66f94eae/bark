@@ -44,15 +44,26 @@ pub struct CMD {
     /// msg content
     #[arg(short, long)]
     pub msg: String,
+    /// whether to use markdown format
+    /// if true, the msg content will be formatted as markdown
+    #[arg(long, required = false, default_value = "false", verbatim_doc_comment)]
+    pub markdown: bool,
+    /// image url
+    #[arg(long, required = false)]
+    pub image: Option<String>,
     /// send to whom in format of user1,user2...
     #[arg(short, long, value_delimiter = ',')]
     pub receiver: Vec<String>,
     /// after how many seconds to send, positive number [1..]
     #[arg(short, long, required = false, value_parser = clap::value_parser!(u64).range(1..))]
     pub delay: Option<u64>,
-    /// Push Interruption Level(active, timeSensitive, passive)
+    /// Push Interruption Level(active, timeSensitive, passive, critical)
     #[arg(short, long, required = false, default_value = "active")]
     pub level: String,
+    /// Push critical Volume(0..10)
+    /// Only effective when level is critical
+    #[arg(short, long, required = false, value_parser = clap::value_parser!(u8).range(0..=10), verbatim_doc_comment)]
+    pub volume: Option<u8>,
     /// Push Badge
     #[arg(short, long, required = false, value_parser = clap::value_parser!(u64).range(0..=9999999999))]
     pub badge: Option<u64>,
@@ -63,6 +74,9 @@ pub struct CMD {
     /// You can set different ringtones for the push
     #[arg(short, long, required = false, default_value = "chime.caf")]
     pub sound: String,
+    /// Keep playing sound
+    #[arg(long, required = false, verbatim_doc_comment, default_value = "false")]
+    pub keep_sound: bool,
     /// Set a custom icon for the push
     /// the set icon will replace the default Bark icon
     #[arg(short, long, required = false, default_value = "https://github.com/66f94eae/bark/raw/main/bot.jpg", verbatim_doc_comment)]
@@ -272,6 +286,13 @@ impl CMD {
         let mut msg: Msg = Msg::new(&self.title, &self.msg);
         if let Some(level) = msg::Level::from_str(&self.level) {
             msg.set_level(level);
+
+            if let Some(volume) = self.volume {
+                // set critical volume
+                if level == msg::Level::CRITICAL {
+                    msg.set_critical_volume(volume);
+                }
+            }
         }
         if let Some(badge) = self.badge {
             msg.set_badge(badge);
@@ -280,26 +301,33 @@ impl CMD {
         msg.set_icon(&self.icon);
         msg.set_is_archive(self.archive);
         msg.set_auto_copy(self.auto_copy);
+        msg.set_call(self.keep_sound);
 
-        if let Some(group) = self.group.clone() {
-            msg.set_group(&group);
+        if let Some(image) = &self.image {
+            msg.set_image_url(image);
         }
-        if let Some(copy) = self.copy.clone() {
-            msg.set_copy(&copy);
+        if let Some(group) = &self.group {
+            msg.set_group(group);
+        }
+        if let Some(copy) = &self.copy {
+            msg.set_copy(copy);
         }
 
-        if let Some(url) = self.url.clone() {
-            msg.set_url(&url);
+        if let Some(url) = &self.url {
+            msg.set_url(url);
         }
 
-        if let Some(key) = self.key.clone() {
-            msg.set_key(&key);
-
-            if let Some(iv) = self.iv.clone() {
-                msg.set_iv(&iv);
+        if let Some(key) = &self.key {
+            msg.set_key(key);
+            if let Some(iv) = &self.iv {
+                msg.set_iv(iv);
             } else {
                 msg.gen_iv();
             }
+        }
+
+        if self.markdown {
+            msg.set_markdown_body(&self.msg);
         }
 
         if self.aes128 {
