@@ -1,0 +1,307 @@
+name: Release
+
+# Change this list when a different branch should publish prereleases.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "r*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  BINARY_NAME: bark
+
+jobs:
+  metadata:
+    name: Release metadata
+    runs-on: ubuntu-22.04
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
+      release_tag: ${{ steps.metadata.outputs.release_tag }}
+      release_name: ${{ steps.metadata.outputs.release_name }}
+      prerelease: ${{ steps.metadata.outputs.prerelease }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Determine release metadata
+        id: metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          version="$(sed -nE 's/^version = "([^"]+)"/\1/p' Cargo.toml | head -n 1)"
+          if [[ -z "$version" ]]; then
+            echo "Could not read the package version from Cargo.toml" >&2
+            exit 1
+          fi
+
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            release_tag="$GITHUB_REF_NAME"
+            release_name="bark $GITHUB_REF_NAME"
+            prerelease=false
+          else
+            safe_ref="${GITHUB_REF_NAME//\//-}"
+            release_tag="${safe_ref}-${GITHUB_SHA::7}"
+            release_name="bark ${safe_ref} (${GITHUB_SHA::7})"
+            prerelease=true
+          fi
+
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "release_tag=$release_tag" >> "$GITHUB_OUTPUT"
+          echo "release_name=$release_name" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+
+  build:
+    name: Build ${{ matrix.label }}
+    needs: metadata
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: windows-x86_64
+            os: windows-2022
+            target: x86_64-pc-windows-msvc
+          - label: windows-i686
+            os: windows-2022
+            target: i686-pc-windows-msvc
+          - label: windows-aarch64
+            os: windows-2022
+            target: aarch64-pc-windows-msvc
+          - label: macos-x86_64
+            os: macos-14
+            target: x86_64-apple-darwin
+          - label: macos-aarch64
+            os: macos-14
+            target: aarch64-apple-darwin
+          - label: linux-gnu-x86_64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            linker: gcc
+            deb_arch: amd64
+            rpm_arch: x86_64
+            linux_packages: true
+            smoke_test: true
+          - label: linux-gnu-i686
+            os: ubuntu-22.04
+            target: i686-unknown-linux-gnu
+            linker: i686-linux-gnu-gcc
+            apt_package: gcc-i686-linux-gnu
+            deb_arch: i386
+            rpm_arch: i686
+            linux_packages: true
+          - label: linux-gnu-aarch64
+            os: ubuntu-22.04
+            target: aarch64-unknown-linux-gnu
+            linker: aarch64-linux-gnu-gcc
+            apt_package: gcc-aarch64-linux-gnu
+            deb_arch: arm64
+            rpm_arch: aarch64
+            linux_packages: true
+          - label: linux-gnu-armv7
+            os: ubuntu-22.04
+            target: armv7-unknown-linux-gnueabihf
+            linker: arm-linux-gnueabihf-gcc
+            apt_package: gcc-arm-linux-gnueabihf
+            deb_arch: armhf
+            rpm_arch: armv7hl
+            linux_packages: true
+          - label: linux-musl-x86_64
+            os: ubuntu-22.04
+            target: x86_64-unknown-linux-musl
+            linker: musl-gcc
+            apt_package: musl-tools
+            linux_packages: false
+
+    env:
+      VERSION: ${{ needs.metadata.outputs.version }}
+      TARGET: ${{ matrix.target }}
+      PACKAGE_LABEL: ${{ matrix.label }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Rust target
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Install Perl for vendored OpenSSL
+        if: runner.os == 'Windows'
+        uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.40"
+
+      - name: Cache Rust build data
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install Linux build and packaging tools
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          APT_PACKAGE: ${{ matrix.apt_package }}
+          BUILD_LINUX_PACKAGES: ${{ matrix.linux_packages }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+
+          packages=()
+          if [[ -n "$APT_PACKAGE" ]]; then
+            packages+=("$APT_PACKAGE")
+          fi
+          if [[ "$BUILD_LINUX_PACKAGES" == "true" ]]; then
+            packages+=(rpm ruby-dev)
+          fi
+          sudo apt-get install --yes --no-install-recommends "${packages[@]}"
+
+          if [[ "$BUILD_LINUX_PACKAGES" == "true" ]]; then
+            sudo gem install fpm --version 1.16.0 --no-document
+          fi
+
+      - name: Configure Linux linker
+        if: runner.os == 'Linux'
+        shell: bash
+        env:
+          LINKER: ${{ matrix.linker }}
+        run: |
+          set -euo pipefail
+          target_key="$(echo "$TARGET" | tr '[:lower:]-' '[:upper:]_')"
+          cc_key="$(echo "$TARGET" | tr '-' '_')"
+          echo "CARGO_TARGET_${target_key}_LINKER=$LINKER" >> "$GITHUB_ENV"
+          echo "CC_${cc_key}=$LINKER" >> "$GITHUB_ENV"
+
+      - name: Build
+        shell: bash
+        run: cargo build --locked --release --target "$TARGET"
+
+      - name: Smoke test native Linux binary
+        if: matrix.smoke_test == true
+        shell: bash
+        run: "target/$TARGET/release/$BINARY_NAME --version"
+
+      - name: Package Unix archive
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="${BINARY_NAME}-${VERSION}-${PACKAGE_LABEL}"
+          mkdir -p "stage/$package" dist
+          cp "target/$TARGET/release/$BINARY_NAME" "stage/$package/"
+          cp README.md LICENSE "stage/$package/"
+          chmod +x "stage/$package/$BINARY_NAME"
+          tar -C stage -czf "dist/$package.tar.gz" "$package"
+
+      - name: Package Windows archive
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $package = "${env:BINARY_NAME}-${env:VERSION}-${env:PACKAGE_LABEL}"
+          New-Item -ItemType Directory -Force "stage/$package", dist | Out-Null
+          Copy-Item "target/$env:TARGET/release/$env:BINARY_NAME.exe" "stage/$package/"
+          Copy-Item README.md, LICENSE "stage/$package/"
+          Compress-Archive -Path "stage/$package" -DestinationPath "dist/$package.zip"
+
+      - name: Build Debian and RPM packages
+        if: runner.os == 'Linux' && matrix.linux_packages == true
+        shell: bash
+        env:
+          DEB_ARCH: ${{ matrix.deb_arch }}
+          RPM_ARCH: ${{ matrix.rpm_arch }}
+        run: |
+          set -euo pipefail
+          binary="target/$TARGET/release/$BINARY_NAME"
+          common=(
+            --input-type dir
+            --name "$BINARY_NAME"
+            --version "$VERSION"
+            --iteration 1
+            --license MIT
+            --url "https://github.com/66f94eae/bark"
+            --description "Command-line client for sending Bark notifications"
+            "$binary=/usr/bin/$BINARY_NAME"
+            "README.md=/usr/share/doc/$BINARY_NAME/README.md"
+            "LICENSE=/usr/share/doc/$BINARY_NAME/LICENSE"
+          )
+
+          fpm "${common[@]}" --output-type deb --architecture "$DEB_ARCH" \
+            --package "dist/${BINARY_NAME}-${VERSION}-${PACKAGE_LABEL}.deb"
+          fpm "${common[@]}" --output-type rpm --architecture "$RPM_ARCH" \
+            --package "dist/${BINARY_NAME}-${VERSION}-${PACKAGE_LABEL}.rpm"
+
+      - name: Create checksums
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          for file in dist/*; do
+            sha256sum "$file" > "$file.sha256"
+          done
+
+      - name: Create Windows checksums
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Get-ChildItem dist -File | ForEach-Object {
+            $hash = (Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLowerInvariant()
+            "$hash  $($_.Name)" | Out-File "$($_.FullName).sha256" -Encoding ascii
+          }
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.label }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    needs:
+      - metadata
+      - build
+    runs-on: ubuntu-22.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          path: dist
+          merge-multiple: true
+
+      - name: Create combined checksum file
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum -- * \
+            | grep -vE '  (SHA256SUMS|.*\.sha256)$' \
+            | sort -k2 > SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.metadata.outputs.release_tag }}
+          name: ${{ needs.metadata.outputs.release_name }}
+          target_commitish: ${{ github.sha }}
+          prerelease: ${{ needs.metadata.outputs.prerelease }}
+          make_latest: ${{ needs.metadata.outputs.prerelease == 'false' }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: dist/*
