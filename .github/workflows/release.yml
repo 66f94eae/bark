@@ -95,7 +95,7 @@ jobs:
             os: ubuntu-22.04
             target: i686-unknown-linux-gnu
             linker: i686-linux-gnu-gcc
-            apt_package: gcc-i686-linux-gnu
+            apt_packages: gcc-i686-linux-gnu libc6-dev-i386-cross
             deb_arch: i386
             rpm_arch: i686
             linux_packages: true
@@ -103,7 +103,7 @@ jobs:
             os: ubuntu-22.04
             target: aarch64-unknown-linux-gnu
             linker: aarch64-linux-gnu-gcc
-            apt_package: gcc-aarch64-linux-gnu
+            apt_packages: gcc-aarch64-linux-gnu libc6-dev-arm64-cross
             deb_arch: arm64
             rpm_arch: aarch64
             linux_packages: true
@@ -111,7 +111,7 @@ jobs:
             os: ubuntu-22.04
             target: armv7-unknown-linux-gnueabihf
             linker: arm-linux-gnueabihf-gcc
-            apt_package: gcc-arm-linux-gnueabihf
+            apt_packages: gcc-arm-linux-gnueabihf libc6-dev-armhf-cross
             deb_arch: armhf
             rpm_arch: armv7hl
             linux_packages: true
@@ -119,7 +119,7 @@ jobs:
             os: ubuntu-22.04
             target: x86_64-unknown-linux-musl
             linker: musl-gcc
-            apt_package: musl-tools
+            apt_packages: musl-tools
             linux_packages: false
 
     env:
@@ -152,15 +152,15 @@ jobs:
         if: runner.os == 'Linux'
         shell: bash
         env:
-          APT_PACKAGE: ${{ matrix.apt_package }}
+          APT_PACKAGES: ${{ matrix.apt_packages }}
           BUILD_LINUX_PACKAGES: ${{ matrix.linux_packages }}
         run: |
           set -euo pipefail
           sudo apt-get update
 
           packages=()
-          if [[ -n "$APT_PACKAGE" ]]; then
-            packages+=("$APT_PACKAGE")
+          if [[ -n "$APT_PACKAGES" ]]; then
+            read -r -a packages <<< "$APT_PACKAGES"
           fi
           if [[ "$BUILD_LINUX_PACKAGES" == "true" ]]; then
             packages+=(rpm ruby-dev)
@@ -183,9 +183,15 @@ jobs:
           echo "CARGO_TARGET_${target_key}_LINKER=$LINKER" >> "$GITHUB_ENV"
           echo "CC_${cc_key}=$LINKER" >> "$GITHUB_ENV"
 
-      - name: Build
+      - name: Build on Unix
+        if: runner.os != 'Windows'
         shell: bash
         run: cargo build --locked --release --target "$TARGET"
+
+      - name: Build on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cargo build --locked --release --target $env:TARGET
 
       - name: Smoke test native Linux binary
         if: matrix.smoke_test == true
@@ -232,15 +238,19 @@ jobs:
             --license MIT
             --url "https://github.com/66f94eae/bark"
             --description "Command-line client for sending Bark notifications"
+          )
+          inputs=(
             "$binary=/usr/bin/$BINARY_NAME"
             "README.md=/usr/share/doc/$BINARY_NAME/README.md"
             "LICENSE=/usr/share/doc/$BINARY_NAME/LICENSE"
           )
 
           fpm "${common[@]}" --output-type deb --architecture "$DEB_ARCH" \
-            --package "dist/${BINARY_NAME}-${VERSION}-${PACKAGE_LABEL}.deb"
+            --package "dist/${BINARY_NAME}-${VERSION}-${PACKAGE_LABEL}.deb" \
+            "${inputs[@]}"
           fpm "${common[@]}" --output-type rpm --architecture "$RPM_ARCH" \
-            --package "dist/${BINARY_NAME}-${VERSION}-${PACKAGE_LABEL}.rpm"
+            --package "dist/${BINARY_NAME}-${VERSION}-${PACKAGE_LABEL}.rpm" \
+            "${inputs[@]}"
 
       - name: Create checksums
         if: runner.os != 'Windows'
@@ -248,7 +258,11 @@ jobs:
         run: |
           set -euo pipefail
           for file in dist/*; do
-            sha256sum "$file" > "$file.sha256"
+            if command -v sha256sum >/dev/null 2>&1; then
+              sha256sum "$file" > "$file.sha256"
+            else
+              shasum -a 256 "$file" > "$file.sha256"
+            fi
           done
 
       - name: Create Windows checksums
